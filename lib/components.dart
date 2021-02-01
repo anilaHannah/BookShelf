@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:bookshelf/selected_book.dart';
 import 'package:bookshelf/genre_books.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
+import 'package:percent_indicator/percent_indicator.dart';
 
 class DividerWidget extends StatelessWidget {
   final double left, right;
@@ -41,13 +42,13 @@ Widget appBar() {
 
 
 class BookCard extends StatelessWidget {
-  final String author, bookName, imageURL;
-  BookCard({this.author, this.bookName, this.imageURL});
+  final String author, bookName, imageURL, path;
+  BookCard({this.author, this.bookName, this.imageURL, this.path});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(right: 12.0),
+      padding: const EdgeInsets.only(right: 20.0),
       child: GestureDetector(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -84,7 +85,7 @@ class BookCard extends StatelessWidget {
           ],
         ),
         onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => SelectedBook(author: author, imageURL: imageURL, title: bookName)));
+          Navigator.push(context, MaterialPageRoute(builder: (context) => SelectedBook(author: author, imageURL: imageURL, title: bookName, path: path,)));
         },
       ),
     );
@@ -104,7 +105,7 @@ class BookRows extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(
-              top: 19.0, bottom: 7.0, left: 20.0, right: 12.0),
+              top: 19.0, bottom: 12.0, left: 20.0, right: 12.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -151,8 +152,8 @@ class BookRows extends StatelessWidget {
 
 class GenreCard extends StatelessWidget {
 
-  final String image, cardName;
-  GenreCard({this.cardName, this.image});
+  final String image, cardName, path;
+  GenreCard({this.cardName, this.image, this.path});
 
   @override
   Widget build(BuildContext context) {
@@ -190,7 +191,7 @@ class GenreCard extends StatelessWidget {
         ),
       ),
       onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => GenreBooks(genre: cardName,)));
+        Navigator.push(context, MaterialPageRoute(builder: (context) => GenreBooks(genre: cardName, path: path,)));
       },
     );
   }
@@ -199,8 +200,8 @@ class GenreCard extends StatelessWidget {
 
 class BigBookCard extends StatelessWidget {
 
-  final String bookName, imageURL, author;
-  BigBookCard({this.bookName, this.imageURL, this.author});
+  final String bookName, imageURL, author, path;
+  BigBookCard({this.bookName, this.imageURL, this.author, this.path});
 
   @override
   Widget build(BuildContext context) {
@@ -213,10 +214,14 @@ class BigBookCard extends StatelessWidget {
             padding: const EdgeInsets.only( left: 16.0, right: 16.0),
             child: Row(
               children: [
-                Image(
-                  image: NetworkImage(imageURL),
-                  width: 80.0,
-                  height: 150.0,
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 15.0),
+                  child: Image(
+                    image: NetworkImage(imageURL),
+                    width: 80.0,
+                    height: 110.0,
+                    fit: BoxFit.fill,
+                  ),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 20.0),
@@ -270,8 +275,86 @@ class BigBookCard extends StatelessWidget {
           ),
         ),
         onTap: (){
-          Navigator.push(context, MaterialPageRoute(builder: (context) => SelectedBook(author: author, imageURL: imageURL, title: bookName)));
+          Navigator.push(context, MaterialPageRoute(builder: (context) => SelectedBook(author: author, imageURL: imageURL, title: bookName, path: path,)));
         },
+      ),
+    );
+  }
+}
+
+class IncompleteBookCard extends StatelessWidget {
+
+  final String bookName, imageURL, author, path;
+  IncompleteBookCard({this.bookName, this.imageURL, this.author, this.path});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10.0, left: 20.0, right: 20.0, bottom: 4.0),
+      child: GestureDetector(
+        child: Card(
+          color: Color(0xFFCEF6A0),
+          child: Padding(
+            padding: const EdgeInsets.only( left: 16.0, right: 16.0),
+            child: Row(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 15.0),
+                  child: Image(
+                    image: NetworkImage(imageURL),
+                    width: 80.0,
+                    height: 110.0,
+                    fit: BoxFit.fill,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 170.0,
+                        child: Text(bookName,
+                          style: TextStyle(
+                            fontSize: 16.0,
+                            fontWeight: FontWeight.w900,
+                          ),
+                          maxLines: 4,
+                        ),
+                      ),
+                      SizedBox(
+                        width: 170.0,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 4.0),
+                          child: Text('by '+author,
+                            style: TextStyle(
+                              fontStyle: FontStyle.italic,
+                              fontSize: 14.0,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: LinearPercentIndicator(
+                          width: 150.0,
+                          animation: true,
+                          lineHeight: 6.0,
+                          animationDuration: 2500,
+                          percent: 0.8,
+                          trailing: Text('80%', style: TextStyle(color: Colors.black, fontSize: 12.0),),
+                          linearStrokeCap: LinearStrokeCap.roundAll,
+                          progressColor: Color(0xFF02340F),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        onTap: null,
       ),
     );
   }

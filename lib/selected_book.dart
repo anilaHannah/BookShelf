@@ -2,16 +2,79 @@ import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:bookshelf/components.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:advance_pdf_viewer/advance_pdf_viewer.dart';
+
+final _firestore = FirebaseFirestore.instance;
+var currentUserEmail;
 
 class SelectedBook extends StatefulWidget {
-  final String author, title, imageURL;
-  SelectedBook({this.author, this.imageURL, this.title});
+  final String author, title, imageURL, path;
+  SelectedBook({this.author, this.imageURL, this.title, this.path});
 
   @override
   _SelectedBookState createState() => _SelectedBookState();
 }
 
 class _SelectedBookState extends State<SelectedBook> {
+
+  bool isSpiritual = false;
+  String genre1 = "", genre2 = "", description = "";
+  List<Widget> similar = [];
+
+  @override
+  void initState() {
+    super.initState();
+    currentUserEmail = FirebaseAuth.instance.currentUser.email;
+    print('Books/${widget.path}/BookDetails/${widget.title}');
+    if(widget.path == 'Spiritual')
+      isSpiritual = true;
+    getDetails();
+    getRowBooks();
+  }
+
+  void getDetails() async {
+    DocumentSnapshot doc = await _firestore.collection('Books/${widget.path}/BookDetails').doc('${widget.title}').get();
+    final details = doc.data();
+    setState(() {
+      description = details['description'];
+      if(!isSpiritual){
+        genre1 = details['genre1'];
+        genre2 = details['genre2'];
+      }
+    });
+  }
+
+  void getRowBooks() {
+    int i = 0;
+    print('Books/${widget.path}/BookDetails');
+    Stream<QuerySnapshot> doc =
+    _firestore.collection('Books/${widget.path}/BookDetails').snapshots();
+    doc.forEach((element) {
+      var books = element.docs.asMap();
+      for (var key in books.keys) {
+        if (i < 6) {
+          final image = element.docs[key]['image'];
+          final bookName = element.docs[key]['bookName'];
+          final author = element.docs[key]['author'];
+          print(bookName);
+          var book = BookCard(
+            author: author,
+            bookName: bookName,
+            imageURL: image,
+            path: widget.path,
+          );
+          setState(() {
+            if(bookName!=widget.title)
+              similar.add(book);
+          });
+          i++;
+        }
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +93,7 @@ class _SelectedBookState extends State<SelectedBook> {
                     image: NetworkImage(widget.imageURL),
                     width: 120.0,
                     height: 190.0,
+                    fit: BoxFit.fill,
                   ),
                   Padding(
                     padding: const EdgeInsets.only(left: 20.0),
@@ -77,7 +141,7 @@ class _SelectedBookState extends State<SelectedBook> {
                         ),
                         Padding(
                           padding: const EdgeInsets.only(top: 5.0),
-                          child: Text('Fantasy | Adventure',
+                          child: Text(isSpiritual ? 'Spiritual' : '$genre1 | $genre2',
                             style: TextStyle(
                               fontSize: 14.0,
                               fontWeight: FontWeight.w600,
@@ -91,7 +155,18 @@ class _SelectedBookState extends State<SelectedBook> {
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
                               MaterialButton(
-                                onPressed: () {},
+                                onPressed: () async {
+                                  await _firestore.collection('users').doc(currentUserEmail).collection('SavedBooks').doc(widget.title).set({'bookName': widget.title, 'author': widget.author, 'image': widget.imageURL, 'category': widget.path});
+                                  Fluttertoast.showToast(
+                                      msg: "The Book has been saved to your collection",
+                                      toastLength: Toast.LENGTH_LONG,
+                                      gravity: ToastGravity.BOTTOM,
+                                      timeInSecForIosWeb: 1,
+                                      backgroundColor: Color(0xFF02340F),
+                                      textColor: Colors.white,
+                                      fontSize: 14.0
+                                  );
+                                },
                                 color: Color(0xFF02340F),
                                 textColor: Colors.white,
                                 child: SvgPicture.asset('assets/save.svg',
@@ -152,7 +227,7 @@ class _SelectedBookState extends State<SelectedBook> {
                     padding: const EdgeInsets.only(left: 28.0, top: 10.0, right: 28.0),
                     child: SizedBox(
                       width: 200.0,
-                      child: Text('Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam dui enim, ultrices sit amet ligula id, euismod mattis magna. Cras ultricies et libero non mollis. Morbi  in orci risus. Sed ut tellus ipsum. Proin sit amet ultrices tortor. Nullam euismod porta urna, non ornare massa consequat ac. Quisque eu eleifend nisl. Nullam sollicitudin sollicitudin mauris sodales dictum. Etiam inter dum finibus magna. Nam augue elit, viverra sit.',
+                      child: Text(description,
                         style: TextStyle(
                           fontSize: 14.0,
                         ),
@@ -163,13 +238,7 @@ class _SelectedBookState extends State<SelectedBook> {
                   ),
                   BookRows(
                     rowHeading: 'Similar Books',
-                    rowContent: [
-                      BookCard(
-                        imageURL: 'https://images-na.ssl-images-amazon.com/images/I/91HHqVTAJQL.jpg',
-                        bookName: 'Harry Potter and the chamber of secrets',
-                        author: 'J.K Rowling',
-                      ),
-                    ],
+                    rowContent: similar,
                   ),
                 ],
               ),

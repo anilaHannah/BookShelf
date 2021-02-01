@@ -30,38 +30,38 @@ class _NovelGenreState extends State<NovelGenre> {
             ),
             Row(
               children: [
-                GenreCard(cardName: 'Action', image: 'action.jpg',),
-                GenreCard(cardName: 'Adventure', image: 'adventure.jpg',),
+                GenreCard(cardName: 'Action', image: 'action.jpg', path: 'Novels',),
+                GenreCard(cardName: 'Adventure', image: 'adventure.jpg', path: 'Novels',),
               ],
             ),
             Row(
               children: [
-                GenreCard(cardName: 'Classic', image: 'classic.jpg',),
-                GenreCard(cardName: 'Comedy', image: 'comedy.jpg',),
+                GenreCard(cardName: 'Classic', image: 'classic.jpg', path: 'Novels',),
+                GenreCard(cardName: 'Comedy', image: 'comedy.jpg', path: 'Novels',),
               ],
             ),
             Row(
               children: [
-                GenreCard(cardName: 'Fantasy', image: 'fantasy.jpg',),
-                GenreCard(cardName: 'Fiction', image: 'fiction.jpg',),
+                GenreCard(cardName: 'Fantasy', image: 'fantasy.jpg', path: 'Novels',),
+                GenreCard(cardName: 'Fiction', image: 'fiction.jpg', path: 'Novels',),
               ],
             ),
             Row(
               children: [
-                GenreCard(cardName: 'History', image: 'history.jpg',),
-                GenreCard(cardName: 'Horror', image: 'horror.jpg',),
+                GenreCard(cardName: 'History', image: 'history.jpg', path: 'Novels',),
+                GenreCard(cardName: 'Horror', image: 'horror.jpg', path: 'Novels',),
               ],
             ),
             Row(
               children: [
-                GenreCard(cardName: 'Mystery', image: 'mystery.jpg',),
-                GenreCard(cardName: 'Poetry', image: 'poetry.jpg',),
+                GenreCard(cardName: 'Mystery', image: 'mystery.jpg', path: 'Novels',),
+                GenreCard(cardName: 'Poetry', image: 'poetry.jpg', path: 'Novels',),
               ],
             ),
             Row(
               children: [
-                GenreCard(cardName: 'Romance', image: 'romance.jpg',),
-                GenreCard(cardName: 'Thriller', image: 'thriller.jpg',),
+                GenreCard(cardName: 'Romance', image: 'romance.jpg', path: 'Novels',),
+                GenreCard(cardName: 'Thriller', image: 'thriller.jpg', path: 'Novels',),
               ],
             ),
             SizedBox(
