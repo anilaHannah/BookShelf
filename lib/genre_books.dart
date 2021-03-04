@@ -71,14 +71,10 @@ class BookStream extends StatelessWidget {
         if (snapshot.hasData) {
           final books = snapshot.data.docs;
           for (var book in books) {
-            final imageURL = book.data()['image'];
             final bookName = book.data()['bookName'];
-            final author = book.data()['author'];
 
             final bookCard = BigBookCard(
-              imageURL: imageURL,
               bookName: bookName,
-              author: author,
               path: path,
             );
             bookList.add(bookCard);
@@ -115,14 +111,10 @@ class BookStream1 extends StatelessWidget {
         if (snapshot.hasData) {
           final books = snapshot.data.docs;
           for (var book in books) {
-            final imageURL = book.data()['image'];
             final bookName = book.data()['bookName'];
-            final author = book.data()['author'];
 
             final bookCard = BigBookCard(
-              imageURL: imageURL,
               bookName: bookName,
-              author: author,
               path: path,
             );
             bookList2.add(bookCard);
@@ -153,14 +145,10 @@ class BookStream2 extends StatelessWidget {
         if (snapshot.hasData) {
           final books = snapshot.data.docs;
           for (var book in books) {
-            final imageURL = book.data()['image'];
             final bookName = book.data()['bookName'];
-            final author = book.data()['author'];
 
             final bookCard = BigBookCard(
-              imageURL: imageURL,
               bookName: bookName,
-              author: author,
               path: path,
             );
             bookList2.add(bookCard);

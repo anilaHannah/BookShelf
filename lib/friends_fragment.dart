@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:bookshelf/constants.dart';
+import 'package:textfield_search/textfield_search.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:bookshelf/chat_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -9,7 +9,6 @@ final _firestore = FirebaseFirestore.instance;
 var currentUserEmail;
 
 class FriendsFragment extends StatefulWidget {
-
   @override
   _FriendsFragmentState createState() => _FriendsFragmentState();
 }
@@ -17,7 +16,6 @@ class FriendsFragment extends StatefulWidget {
 class _FriendsFragmentState extends State<FriendsFragment>
     with TickerProviderStateMixin {
   TabController _tabController;
-
 
   @override
   void initState() {
@@ -32,7 +30,6 @@ class _FriendsFragmentState extends State<FriendsFragment>
     super.dispose();
     _tabController.dispose();
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -78,17 +75,32 @@ class FriendsTab extends StatefulWidget {
 }
 
 class _FriendsTabState extends State<FriendsTab> {
-
   TextEditingController searchController = TextEditingController();
   bool search = false;
   String searchUser;
   List<Widget> sendList = [];
   List<Widget> friendsList = [];
+  var userList = [];
 
   @override
   void initState() {
     super.initState();
     getFriends();
+    getUsers();
+    searchController.addListener(_printLatestValue);
+  }
+
+  void getUsers() {
+    Stream<QuerySnapshot> doc = _firestore.collection('users').snapshots();
+    doc.forEach((element) {
+      var users = element.docs.asMap();
+      for (var key in users.keys) {
+        final fullname = element.docs[key]['fullname'];
+        setState(() {
+          userList.add(fullname);
+        });
+      }
+    });
   }
 
   void getSearchUsers() {
@@ -99,25 +111,41 @@ class _FriendsTabState extends State<FriendsTab> {
     doc.forEach((element) {
       var users = element.docs.asMap();
       for (var key in users.keys) {
+        final email = element.docs[key]['email'];
         final fullname = element.docs[key]['fullname'];
-        var book = RequestCardWithOneButton(name: fullname, icon: Icons.person,);
+        var book = RequestCardWithOneButton(
+          email: email,
+        );
         setState(() {
           sendList.add(book);
+          userList.add(fullname);
         });
       }
     });
   }
 
-  void getFriends(){
+  _printLatestValue() {
+    if (searchController.text != "") {
+      searchUser = searchController.text;
+      getSearchUsers();
+      setState(() {
+        search = true;
+      });
+    } else
+      search = null;
+  }
+
+  void getFriends() {
     friendsList = [];
-    Stream<QuerySnapshot> doc = _firestore
-        .collection('users/$currentUserEmail/Friends')
-        .snapshots();
+    Stream<QuerySnapshot> doc =
+        _firestore.collection('users/$currentUserEmail/Friends').snapshots();
     doc.forEach((element) {
       var users = element.docs.asMap();
       for (var key in users.keys) {
-        final name = element.docs[key]['name'];
-        var book = FriendsCard(name: name, icon: Icons.person,);
+        final email = element.docs[key]['email'];
+        var book = FriendsCard(
+          email: email,
+        );
         setState(() {
           friendsList.add(book);
         });
@@ -137,26 +165,12 @@ class _FriendsTabState extends State<FriendsTab> {
             child: Material(
               elevation: 5.0,
               borderRadius: BorderRadius.all(Radius.circular(10.0)),
-              child: TextField(
-                controller: searchController,
-                decoration: textFieldDecoration.copyWith(
-                  hintText: 'Search People',
-                  suffixIcon: GestureDetector(
-                    child: Icon(
-                      Icons.search,
-                      color: Color(0xFF02340F),
-                    ),
-                    onTap: (){
-                      getSearchUsers();
-                      setState(() {
-                        search = true;
-                      });
-                    },
-                  ),
-                ),
-                onChanged: (value){
-                  searchUser = value;
-                },
+              child: Padding(
+                padding: const EdgeInsets.only(left: 10.0),
+                child: TextFieldSearch(
+                    initialList: userList,
+                    label: "Search People",
+                    controller: searchController),
               ),
             ),
           ),
@@ -166,8 +180,8 @@ class _FriendsTabState extends State<FriendsTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(
-                      bottom: 7.0, left: 16.0, top: 20.0),
+                  padding:
+                      const EdgeInsets.only(bottom: 7.0, left: 16.0, top: 20.0),
                   child: Text(
                     'Your Friends',
                     style: TextStyle(
@@ -177,20 +191,22 @@ class _FriendsTabState extends State<FriendsTab> {
                   ),
                 ),
                 Column(
-                  children: (friendsList.isNotEmpty) ? friendsList : [
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
-                        child: Text(
-                          'No Friends Currently',
-                          style: TextStyle(
-                            fontSize: 14.0,
-                            fontWeight: FontWeight.w600,
+                  children: (friendsList.isNotEmpty)
+                      ? friendsList
+                      : [
+                          Center(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text(
+                                'No Friends Currently',
+                                style: TextStyle(
+                                  fontSize: 14.0,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
-                  ],
+                        ],
                 ),
               ],
             ),
@@ -219,13 +235,14 @@ class _FriendsTabState extends State<FriendsTab> {
                     GestureDetector(
                       child: Padding(
                         padding: const EdgeInsets.only(right: 15.0, top: 20.0),
-                        child: SvgPicture.asset('assets/cancel.svg',
+                        child: SvgPicture.asset(
+                          'assets/cancel.svg',
                           width: 20.0,
                           height: 20.0,
                           color: Color(0xFF02340F),
                         ),
                       ),
-                      onTap: (){
+                      onTap: () {
                         searchController.clear();
                         sendList = [];
                         setState(() {
@@ -236,20 +253,22 @@ class _FriendsTabState extends State<FriendsTab> {
                   ],
                 ),
                 Column(
-                  children: (sendList.isNotEmpty) ? sendList : [
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
-                        child: Text(
-                          'No User Found',
-                          style: TextStyle(
-                            fontSize: 14.0,
-                            fontWeight: FontWeight.w600,
+                  children: (sendList.isNotEmpty)
+                      ? sendList
+                      : [
+                          Center(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text(
+                                'No User Found',
+                                style: TextStyle(
+                                  fontSize: 14.0,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
-                  ],
+                        ],
                 ),
               ],
             ),
@@ -266,7 +285,6 @@ class RequestTab extends StatefulWidget {
 }
 
 class _RequestTabState extends State<RequestTab> {
-
   List<Widget> acceptList = [];
 
   @override
@@ -275,7 +293,7 @@ class _RequestTabState extends State<RequestTab> {
     getAcceptUsers();
   }
 
-  void getAcceptUsers(){
+  void getAcceptUsers() {
     acceptList = [];
     Stream<QuerySnapshot> doc = _firestore
         .collection('users/$currentUserEmail/PendingRequests')
@@ -283,8 +301,10 @@ class _RequestTabState extends State<RequestTab> {
     doc.forEach((element) {
       var users = element.docs.asMap();
       for (var key in users.keys) {
-        final name = element.docs[key]['name'];
-        var book = RequestCardWithTwoButtons(name: name, icon: Icons.person,);
+        final email = element.docs[key]['email'];
+        var book = RequestCardWithTwoButtons(
+          email: email,
+        );
         setState(() {
           acceptList.add(book);
         });
@@ -299,8 +319,7 @@ class _RequestTabState extends State<RequestTab> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(
-                bottom: 7.0, left: 16.0, top: 20.0),
+            padding: const EdgeInsets.only(bottom: 7.0, left: 16.0, top: 20.0),
             child: Text(
               'Received Requests',
               style: TextStyle(
@@ -310,20 +329,22 @@ class _RequestTabState extends State<RequestTab> {
             ),
           ),
           Column(
-            children: (acceptList.isNotEmpty) ? acceptList : [
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: Text(
-                    'No Pending Requests',
-                    style: TextStyle(
-                      fontSize: 14.0,
-                      fontWeight: FontWeight.w600,
+            children: (acceptList.isNotEmpty)
+                ? acceptList
+                : [
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          'No Pending Requests',
+                          style: TextStyle(
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ),
-            ],
+                  ],
           ),
         ],
       ),
@@ -331,96 +352,128 @@ class _RequestTabState extends State<RequestTab> {
   }
 }
 
+class FriendsCard extends StatefulWidget {
+  final String email;
+  //final IconData icon;
 
+  FriendsCard({this.email});
 
-class FriendsCard extends StatelessWidget {
+  @override
+  _FriendsCardState createState() => _FriendsCardState();
+}
 
-  final String name;
-  final IconData icon;
-
-  FriendsCard({this.name, this.icon});
+class _FriendsCardState extends State<FriendsCard> {
+  String imageURL = "", name = "";
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      child: Padding(
-        padding: const EdgeInsets.only(top: 20.0, left: 25.0),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 25.0,
-                  backgroundColor: Color(0xFF02340F),
-                  child: Icon(
-                    icon,
-                    color: Colors.white,
-                    size: 30.0,
+    return StreamBuilder<DocumentSnapshot>(
+        stream: _firestore.collection('users').doc(widget.email).snapshots(),
+        builder: (context, snapshot) {
+          try {
+            var variable = snapshot.data.data();
+            setState(() {
+              name = variable['fullname'];
+              imageURL = variable['profilePic'];
+            });
+          } catch (e) {
+            print(e);
+          }
+          return GestureDetector(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 20.0, left: 25.0),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 25.0,
+                        backgroundColor: Color(0xFF02340F),
+                        child: (imageURL == null || imageURL == "")
+                            ? CircleAvatar(
+                                backgroundColor: Color(0xFF02340F),
+                                radius: 60,
+                                child: Icon(
+                                  Icons.person,
+                                  color: Colors.white,
+                                  size: 30.0,
+                                ),
+                              )
+                            : CircleAvatar(
+                                backgroundColor: Color(0xFF02340F),
+                                radius: 60,
+                                backgroundImage: NetworkImage(
+                                  imageURL,
+                                ),
+                              ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 20.0),
+                        child: Text(
+                          name,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16.0,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 20.0),
-                  child: Text(
-                    name,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16.0,
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ],
-        ),
-      ),
-      onTap: (){
-        Navigator.push(context, MaterialPageRoute(builder: (context) => ChatScreen(image: icon, name: name,)));
-      },
-    );
+            onTap: () {
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => ChatScreen(
+                            email: widget.email,
+                          )));
+            },
+          );
+        });
   }
 }
 
 class RequestCardWithOneButton extends StatefulWidget {
+  final String email;
 
-  final String name;
-  final IconData icon;
-
-  RequestCardWithOneButton({this.icon, this.name});
+  RequestCardWithOneButton({this.email});
 
   @override
-  _RequestCardWithOneButtonState createState() => _RequestCardWithOneButtonState();
+  _RequestCardWithOneButtonState createState() =>
+      _RequestCardWithOneButtonState();
 }
 
 class _RequestCardWithOneButtonState extends State<RequestCardWithOneButton> {
-
-  String user, myName;
+  String userName = "", myName = "", profilePic = "";
   bool exists = false;
 
   @override
   void initState() {
     super.initState();
-    getUser();
+    //getUser();
     getName();
   }
 
-  void getUser()
-  {
-    Stream<QuerySnapshot> doc = _firestore
-        .collection('users')
-        .where('fullname', isEqualTo: widget.name)
-        .snapshots();
-    doc.forEach((element) {
-      var users = element.docs.asMap();
-      for (var key in users.keys) {
-        setState(() {
-          user = element.docs[key]['email'];
-        });
-      }
-    });
-  }
+  // void getUser() {
+  //   Stream<QuerySnapshot> doc = _firestore
+  //       .collection('users')
+  //       .where('fullname', isEqualTo: widget.name)
+  //       .snapshots();
+  //   doc.forEach((element) {
+  //     var users = element.docs.asMap();
+  //     for (var key in users.keys) {
+  //       setState(() {
+  //         user = element.docs[key]['email'];
+  //       });
+  //     }
+  //   });
+  // }
 
-  void getName(){
-    Stream<DocumentSnapshot> doc = _firestore.doc('users/$currentUserEmail').snapshots();
+  void getName() {
+    Stream<DocumentSnapshot> doc =
+        _firestore.doc('users/$currentUserEmail').snapshots();
     doc.forEach((element) {
       setState(() {
         myName = element.data()['fullname'];
@@ -428,8 +481,11 @@ class _RequestCardWithOneButtonState extends State<RequestCardWithOneButton> {
     });
   }
 
-  void isSent() async{
-    await _firestore.doc('users/$currentUserEmail/SentRequests/$user').get().then((doc) {
+  void isSent() async {
+    await _firestore
+        .doc('users/$currentUserEmail/SentRequests/${widget.email}')
+        .get()
+        .then((doc) {
       if (doc.exists)
         setState(() {
           exists = true;
@@ -444,98 +500,137 @@ class _RequestCardWithOneButtonState extends State<RequestCardWithOneButton> {
   @override
   Widget build(BuildContext context) {
     isSent();
-    return Padding(
-      padding: const EdgeInsets.only(top: 20.0, left: 15.0),
-      child: Column(
-        children: [
-          Row(
+    return StreamBuilder<DocumentSnapshot>(
+      stream: _firestore.collection('users').doc(widget.email).snapshots(),
+      builder: (context, snapshot){
+        try{
+          var variable = snapshot.data.data();
+          userName = variable['fullname'];
+          profilePic = variable['profilePic'];
+        }
+        catch(e){
+          print(e);
+        }
+        return Padding(
+          padding: const EdgeInsets.only(top: 20.0, left: 15.0),
+          child: Column(
             children: [
-              CircleAvatar(
-                radius: 25.0,
-                backgroundColor: Color(0xFF02340F),
-                child: Icon(
-                  widget.icon,
-                  color: Colors.white,
-                  size: 30.0,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(left: 10.0),
-                child: Text(
-                  widget.name,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16.0,
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(left: 10.0),
-                child: GestureDetector(
-                  child: Material(
-                    color: exists ? Color(0xFF505050) : Color(0xFF02340F),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 5.0),
-                      child: Text(exists ? 'Sent' : 'Send Request',
-                        style: TextStyle(fontSize: 12.0, color: Colors.white),),
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 25.0,
+                    backgroundColor: Color(0xFF02340F),
+                    child: (profilePic == null || profilePic == "")
+                        ? CircleAvatar(
+                      backgroundColor: Color(0xFF02340F),
+                      radius: 60,
+                      child: Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 30.0,
+                      ),
+                    )
+                        : CircleAvatar(
+                      backgroundColor: Color(0xFF02340F),
+                      radius: 60,
+                      backgroundImage: NetworkImage(
+                        profilePic,
+                      ),
                     ),
-                    shape: RoundedRectangleBorder(borderRadius: new BorderRadius.circular(7.0)),
                   ),
-                  onTap: exists ? null : () async {
-                    await _firestore.collection('users').doc(currentUserEmail).collection('SentRequests').doc(user).set({'name': widget.name});
-                    await _firestore.collection('users').doc(user).collection('PendingRequests').doc(currentUserEmail).set({'name': myName});
-                  },
-                ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 10.0),
+                    child: Text(
+                      userName,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16.0,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 10.0),
+                    child: GestureDetector(
+                      child: Material(
+                        color: exists ? Color(0xFF505050) : Color(0xFF02340F),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8.0, vertical: 5.0),
+                          child: Text(
+                            exists ? 'Sent' : 'Send Request',
+                            style: TextStyle(fontSize: 12.0, color: Colors.white),
+                          ),
+                        ),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: new BorderRadius.circular(7.0)),
+                      ),
+                      onTap: exists
+                          ? null
+                          : () async {
+                        await _firestore
+                            .collection('users')
+                            .doc(currentUserEmail)
+                            .collection('SentRequests')
+                            .doc(widget.email)
+                            .set({'email': widget.email});
+                        await _firestore
+                            .collection('users')
+                            .doc(widget.email)
+                            .collection('PendingRequests')
+                            .doc(currentUserEmail)
+                            .set({'email': currentUserEmail});
+                      },
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
 
 class RequestCardWithTwoButtons extends StatefulWidget {
+  final String email;
 
-  final String name;
-  final IconData icon;
-
-  RequestCardWithTwoButtons({this.icon, this.name});
+  RequestCardWithTwoButtons({this.email});
 
   @override
-  _RequestCardWithTwoButtonsState createState() => _RequestCardWithTwoButtonsState();
+  _RequestCardWithTwoButtonsState createState() =>
+      _RequestCardWithTwoButtonsState();
 }
 
 class _RequestCardWithTwoButtonsState extends State<RequestCardWithTwoButtons> {
-
-  String user, myName;
+  String userName = "", myName = "", profilePic = "";
   bool isVisible = true;
 
   @override
   void initState() {
     super.initState();
-    getUser();
+    //getUser();
     getName();
   }
 
-  void getUser()
-  {
-    Stream<QuerySnapshot> doc = _firestore
-        .collection('users')
-        .where('fullname', isEqualTo: widget.name)
-        .snapshots();
-    doc.forEach((element) {
-      var users = element.docs.asMap();
-      for (var key in users.keys) {
-        setState(() {
-          user = element.docs[key]['email'];
-        });
-      }
-    });
-  }
+  // void getUser() {
+  //   Stream<QuerySnapshot> doc = _firestore
+  //       .collection('users')
+  //       .where('fullname', isEqualTo: widget.name)
+  //       .snapshots();
+  //   doc.forEach((element) {
+  //     var users = element.docs.asMap();
+  //     for (var key in users.keys) {
+  //       setState(() {
+  //         user = element.docs[key]['email'];
+  //       });
+  //     }
+  //   });
+  // }
 
-  void getName(){
-    Stream<DocumentSnapshot> doc = _firestore.doc('users/$currentUserEmail').snapshots();
+  void getName() {
+    Stream<DocumentSnapshot> doc =
+        _firestore.doc('users/$currentUserEmail').snapshots();
     doc.forEach((element) {
       setState(() {
         myName = element.data()['fullname'];
@@ -545,80 +640,145 @@ class _RequestCardWithTwoButtonsState extends State<RequestCardWithTwoButtons> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 20.0, left: 15.0),
-      child: Visibility(
-        visible: isVisible,
-        child: Column(
-          children: [
-            Row(
+    return StreamBuilder<DocumentSnapshot>(
+      stream: _firestore.collection('users').doc(widget.email).snapshots(),
+      builder: (context, snapshot){
+        try{
+          var variable = snapshot.data.data();
+          userName = variable['fullname'];
+          profilePic = variable['profilePic'];
+        }
+        catch(e){
+          print(e);
+        }
+        return Padding(
+          padding: const EdgeInsets.only(top: 20.0, left: 15.0),
+          child: Visibility(
+            visible: isVisible,
+            child: Column(
               children: [
-                CircleAvatar(
-                  radius: 25.0,
-                  backgroundColor: Color(0xFF02340F),
-                  child: Icon(
-                    widget.icon,
-                    color: Colors.white,
-                    size: 30.0,
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 10.0),
-                  child: Text(
-                    widget.name,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16.0,
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 10.0),
-                  child: GestureDetector(
-                    child: Material(
-                      color: Color(0xFF02340F),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 5.0),
-                        child: Text('Accept', style: TextStyle(fontSize: 12.0, color: Colors.white),),
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 25.0,
+                      backgroundColor: Color(0xFF02340F),
+                      child: (profilePic == null || profilePic == "")
+                          ? CircleAvatar(
+                        backgroundColor: Color(0xFF02340F),
+                        radius: 60,
+                        child: Icon(
+                          Icons.person,
+                          color: Colors.white,
+                          size: 30.0,
+                        ),
+                      )
+                          : CircleAvatar(
+                        backgroundColor: Color(0xFF02340F),
+                        radius: 60,
+                        backgroundImage: NetworkImage(
+                          profilePic,
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(borderRadius: new BorderRadius.circular(7.0)),
                     ),
-                    onTap: () async {
-                      await _firestore.collection('users').doc(currentUserEmail).collection('Friends').doc(user).set({'name': widget.name});
-                      await _firestore.collection('users').doc(user).collection('Friends').doc(currentUserEmail).set({'name': myName});
-                      _firestore.collection('users').doc(currentUserEmail).collection('PendingRequests').doc(user).delete();
-                      _firestore.collection('users').doc(user).collection('SentRequests').doc(currentUserEmail).delete();
-                      setState(() {
-                        isVisible = false;
-                      });
-                    },
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 10.0),
-                  child: GestureDetector(
-                    child: Material(
-                      color: Color(0xFF02340F),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 5.0),
-                        child: Text('Delete', style: TextStyle(fontSize: 12.0, color: Colors.white),),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 10.0),
+                      child: Text(
+                        userName,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16.0,
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(borderRadius: new BorderRadius.circular(7.0)),
                     ),
-                    onTap: (){
-                      _firestore.collection('users').doc(currentUserEmail).collection('PendingRequests').doc(user).delete();
-                      _firestore.collection('users').doc(user).collection('SentRequests').doc(currentUserEmail).delete();
-                      setState(() {
-                        isVisible = false;
-                      });
-                    }
-                  ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 10.0),
+                      child: GestureDetector(
+                        child: Material(
+                          color: Color(0xFF02340F),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8.0, vertical: 5.0),
+                            child: Text(
+                              'Accept',
+                              style: TextStyle(fontSize: 12.0, color: Colors.white),
+                            ),
+                          ),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: new BorderRadius.circular(7.0)),
+                        ),
+                        onTap: () async {
+                          await _firestore
+                              .collection('users')
+                              .doc(currentUserEmail)
+                              .collection('Friends')
+                              .doc(widget.email)
+                              .set({'email': widget.email});
+                          await _firestore
+                              .collection('users')
+                              .doc(widget.email)
+                              .collection('Friends')
+                              .doc(currentUserEmail)
+                              .set({'email': currentUserEmail});
+                          _firestore
+                              .collection('users')
+                              .doc(currentUserEmail)
+                              .collection('PendingRequests')
+                              .doc(widget.email)
+                              .delete();
+                          _firestore
+                              .collection('users')
+                              .doc(widget.email)
+                              .collection('SentRequests')
+                              .doc(currentUserEmail)
+                              .delete();
+                          setState(() {
+                            isVisible = false;
+                          });
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 10.0),
+                      child: GestureDetector(
+                          child: Material(
+                            color: Color(0xFF02340F),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8.0, vertical: 5.0),
+                              child: Text(
+                                'Delete',
+                                style:
+                                TextStyle(fontSize: 12.0, color: Colors.white),
+                              ),
+                            ),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: new BorderRadius.circular(7.0)),
+                          ),
+                          onTap: () {
+                            _firestore
+                                .collection('users')
+                                .doc(currentUserEmail)
+                                .collection('PendingRequests')
+                                .doc(widget.email)
+                                .delete();
+                            _firestore
+                                .collection('users')
+                                .doc(widget.email)
+                                .collection('SentRequests')
+                                .doc(currentUserEmail)
+                                .delete();
+                            setState(() {
+                              isVisible = false;
+                            });
+                          }),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

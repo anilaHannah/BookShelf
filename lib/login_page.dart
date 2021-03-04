@@ -1,3 +1,4 @@
+import 'package:cool_alert/cool_alert.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'constants.dart';
@@ -8,10 +9,10 @@ import 'home_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_facebook_login/flutter_facebook_login.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+//import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:modal_progress_hud/modal_progress_hud.dart';
 
-final _firestore = FirebaseFirestore.instance;
+//final _firestore = FirebaseFirestore.instance;
 
 class LoginPage extends StatefulWidget {
   @override
@@ -24,24 +25,12 @@ class _LoginPageState extends State<LoginPage> {
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
   bool emailValidate = true, passwordValidate = true;
-  bool exists = false;
   bool showSpinner = false;
 
   final GoogleSignIn _googleSignIn = new GoogleSignIn();
 
   Future<UserCredential> googleSignIn() async {
     GoogleSignInAccount googleUser = await _googleSignIn.signIn();
-    try {
-      await _firestore.doc('users/${googleUser.email}').get().then((doc) {
-        if (doc.exists)
-          exists = true;
-        else
-          exists = false;
-      });
-    } catch (e) {
-      print(e);
-    }
-    if (exists) {
       GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
@@ -50,8 +39,6 @@ class _LoginPageState extends State<LoginPage> {
       final UserCredential userCredential =
           await _auth.signInWithCredential(credential);
       return userCredential;
-    } else
-      return null;
   }
 
   FacebookLogin fbLogin = new FacebookLogin();
@@ -214,14 +201,41 @@ class _LoginPageState extends State<LoginPage> {
                                     showSpinner = false;
                                   });
                                   if (user != null) {
-                                    Navigator.push(
+                                    Navigator.pushAndRemoveUntil(
                                         context,
                                         MaterialPageRoute(
-                                            builder: (context) => HomePage()));
+                                            builder: (context) => HomePage()), (Route<dynamic> route) => false);
                                   } else
                                     print('Null user');
                                 } catch (e) {
                                   print(e);
+                                  Future<dynamic> coolAlert = CoolAlert.show(
+                                    context: context,
+                                    type: CoolAlertType.error,
+                                    confirmBtnColor: Color(0xFF02340F),
+                                    backgroundColor: Color(0xFFCEF6A0),
+                                    title: 'Error',
+                                    text: e.toString(),
+                                  );
+                                  setState(() {
+                                    showSpinner = false;
+                                  });
+                                  // return showDialog(
+                                  //   context: context,
+                                  //   builder: (ctx) => AlertDialog(
+                                  //     title: Text("Login Error", style: TextStyle(fontWeight: FontWeight.bold),),
+                                  //     content: Text(e.toString()),
+                                  //     actions: <Widget>[
+                                  //       FlatButton(
+                                  //         onPressed: () {
+                                  //           Navigator.of(ctx).pop();
+                                  //           Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => LoginPage()), (Route<dynamic> route) => false);
+                                  //         },
+                                  //         child: Text("OK"),
+                                  //       ),
+                                  //     ],
+                                  //   ),
+                                  // );
                                 }
                               }
                             },
@@ -271,10 +285,10 @@ class _LoginPageState extends State<LoginPage> {
                               if (userCredential != null) {
                                 User user = userCredential.user;
                                 print(user.displayName);
-                                Navigator.push(
+                                Navigator.pushAndRemoveUntil(
                                     context,
                                     MaterialPageRoute(
-                                        builder: (context) => HomePage()));
+                                        builder: (context) => HomePage()), (Route<dynamic> route) => false);
                               }
                               else
                                 return showDialog(
@@ -308,10 +322,10 @@ class _LoginPageState extends State<LoginPage> {
                               await facebookLogin();
                               User user = userCredential.user;
                               print(user.displayName);
-                              Navigator.push(
+                              Navigator.pushAndRemoveUntil(
                                   context,
                                   MaterialPageRoute(
-                                      builder: (context) => HomePage()));
+                                      builder: (context) => HomePage()), (Route<dynamic> route) => false);
                             },
                           ),
                         ],

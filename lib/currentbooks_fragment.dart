@@ -18,6 +18,7 @@ class _CurrentBooksFragmentState extends State<CurrentBooksFragment> {
   @override
   void initState() {
     super.initState();
+    bookList = [];
     currentUserEmail = FirebaseAuth.instance.currentUser.email;
   }
 
@@ -58,15 +59,12 @@ class BookStream extends StatelessWidget {
         if (snapshot.hasData) {
           final books = snapshot.data.docs;
           for (var book in books) {
-            final imageURL = book.data()['image'];
             final bookName = book.data()['bookName'];
-            final author = book.data()['author'];
             final category = book.data()['category'];
 
+
             final bookCard = IncompleteBookCard(
-              imageURL: imageURL,
               bookName: bookName,
-              author: author,
               path: category,
             );
             bookList.add(bookCard);

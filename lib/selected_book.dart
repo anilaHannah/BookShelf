@@ -1,3 +1,7 @@
+import 'dart:io';
+import 'package:bookshelf/currentbooks_fragment.dart';
+import 'package:bookshelf/wishlist.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -5,23 +9,23 @@ import 'package:bookshelf/components.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:advance_pdf_viewer/advance_pdf_viewer.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:path_provider/path_provider.dart';
 
 final _firestore = FirebaseFirestore.instance;
 var currentUserEmail;
 
 class SelectedBook extends StatefulWidget {
-  final String author, title, imageURL, path;
-  SelectedBook({this.author, this.imageURL, this.title, this.path});
+  final String title, path;
+  SelectedBook({this.title, this.path});
 
   @override
   _SelectedBookState createState() => _SelectedBookState();
 }
 
 class _SelectedBookState extends State<SelectedBook> {
-
   bool isSpiritual = false;
-  String genre1 = "", genre2 = "", description = "";
+  String genre1 = "", genre2 = "", description = "", link = "", author = "", imageURL = "";
   List<Widget> similar = [];
 
   @override
@@ -29,18 +33,48 @@ class _SelectedBookState extends State<SelectedBook> {
     super.initState();
     currentUserEmail = FirebaseAuth.instance.currentUser.email;
     print('Books/${widget.path}/BookDetails/${widget.title}');
-    if(widget.path == 'Spiritual')
-      isSpiritual = true;
+    if (widget.path == 'Spiritual') isSpiritual = true;
     getDetails();
     getRowBooks();
   }
 
+  void getPermission() async {
+    await Permission.storage.request();
+  }
+
+  var dio = Dio();
+
+  Future download(Dio dio, String url, String path) async {
+    try {
+      Response response = await dio.get(url,
+          options: Options(
+              responseType: ResponseType.bytes,
+              followRedirects: false,
+              validateStatus: (status) {
+                return status < 500;
+              }));
+
+      File file = File(path);
+      var raf = file.openSync(mode: FileMode.write);
+      raf.writeFromSync(response.data);
+      await raf.close();
+    } catch (e) {
+      print(e);
+    }
+  }
+
   void getDetails() async {
-    DocumentSnapshot doc = await _firestore.collection('Books/${widget.path}/BookDetails').doc('${widget.title}').get();
+    DocumentSnapshot doc = await _firestore
+        .collection('Books/${widget.path}/BookDetails')
+        .doc('${widget.title}')
+        .get();
     final details = doc.data();
     setState(() {
       description = details['description'];
-      if(!isSpiritual){
+      link = details['link'];
+      author = details['author'];
+      imageURL = details['image'];
+      if (!isSpiritual) {
         genre1 = details['genre1'];
         genre2 = details['genre2'];
       }
@@ -51,7 +85,7 @@ class _SelectedBookState extends State<SelectedBook> {
     int i = 0;
     print('Books/${widget.path}/BookDetails');
     Stream<QuerySnapshot> doc =
-    _firestore.collection('Books/${widget.path}/BookDetails').snapshots();
+        _firestore.collection('Books/${widget.path}/BookDetails').snapshots();
     doc.forEach((element) {
       var books = element.docs.asMap();
       for (var key in books.keys) {
@@ -67,8 +101,7 @@ class _SelectedBookState extends State<SelectedBook> {
             path: widget.path,
           );
           setState(() {
-            if(bookName!=widget.title)
-              similar.add(book);
+            if (bookName != widget.title) similar.add(book);
           });
           i++;
         }
@@ -86,11 +119,14 @@ class _SelectedBookState extends State<SelectedBook> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.only(top: 16.0, left: 16.0, right: 16.0, bottom: 10.0),
+              padding: const EdgeInsets.only(
+                  top: 16.0, left: 16.0, right: 16.0, bottom: 10.0),
               child: Row(
                 children: [
+                  (imageURL == null) ?
+                      Icon(Icons.book) :
                   Image(
-                    image: NetworkImage(widget.imageURL),
+                    image: NetworkImage(imageURL),
                     width: 120.0,
                     height: 190.0,
                     fit: BoxFit.fill,
@@ -102,7 +138,8 @@ class _SelectedBookState extends State<SelectedBook> {
                       children: [
                         SizedBox(
                           width: 170.0,
-                          child: Text(widget.title,
+                          child: Text(
+                            widget.title,
                             style: TextStyle(
                               fontSize: 16.0,
                               fontWeight: FontWeight.w900,
@@ -114,7 +151,8 @@ class _SelectedBookState extends State<SelectedBook> {
                           width: 170.0,
                           child: Padding(
                             padding: const EdgeInsets.only(top: 4.0),
-                            child: Text('by '+widget.author,
+                            child: Text(
+                              'by ' + author,
                               style: TextStyle(
                                 fontStyle: FontStyle.italic,
                                 fontSize: 14.0,
@@ -141,12 +179,12 @@ class _SelectedBookState extends State<SelectedBook> {
                         ),
                         Padding(
                           padding: const EdgeInsets.only(top: 5.0),
-                          child: Text(isSpiritual ? 'Spiritual' : '$genre1 | $genre2',
+                          child: Text(
+                            isSpiritual ? 'Spiritual' : '$genre1 | $genre2',
                             style: TextStyle(
-                              fontSize: 14.0,
-                              fontWeight: FontWeight.w600,
-                              fontStyle: FontStyle.italic
-                            ),
+                                fontSize: 14.0,
+                                fontWeight: FontWeight.w600,
+                                fontStyle: FontStyle.italic),
                           ),
                         ),
                         Padding(
@@ -156,20 +194,35 @@ class _SelectedBookState extends State<SelectedBook> {
                             children: [
                               MaterialButton(
                                 onPressed: () async {
-                                  await _firestore.collection('users').doc(currentUserEmail).collection('SavedBooks').doc(widget.title).set({'bookName': widget.title, 'author': widget.author, 'image': widget.imageURL, 'category': widget.path});
-                                  Fluttertoast.showToast(
-                                      msg: "The Book has been saved to your collection",
-                                      toastLength: Toast.LENGTH_LONG,
-                                      gravity: ToastGravity.BOTTOM,
-                                      timeInSecForIosWeb: 1,
-                                      backgroundColor: Color(0xFF02340F),
-                                      textColor: Colors.white,
-                                      fontSize: 14.0
+                                  await _firestore
+                                      .collection('users')
+                                      .doc(currentUserEmail)
+                                      .collection('SavedBooks')
+                                      .doc(widget.title)
+                                      .set({
+                                    'bookName': widget.title,
+                                    'category': widget.path,
+                                  });
+                                  return showDialog(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      title: Text("Successful", style: TextStyle(fontWeight: FontWeight.bold),),
+                                      content: Text("${widget.title} has been saved to your collection!"),
+                                      actions: <Widget>[
+                                        FlatButton(
+                                          onPressed: () {
+                                            Navigator.of(ctx).pop();
+                                          },
+                                          child: Text("OK"),
+                                        ),
+                                      ],
+                                    ),
                                   );
                                 },
                                 color: Color(0xFF02340F),
                                 textColor: Colors.white,
-                                child: SvgPicture.asset('assets/save.svg',
+                                child: SvgPicture.asset(
+                                  'assets/save.svg',
                                   width: 16.0,
                                   height: 16.0,
                                   color: Colors.white,
@@ -178,10 +231,37 @@ class _SelectedBookState extends State<SelectedBook> {
                                 shape: CircleBorder(),
                               ),
                               MaterialButton(
-                                onPressed: () {},
+                                onPressed: () async {
+                                  await _firestore
+                                      .collection('users')
+                                      .doc(currentUserEmail)
+                                      .collection('WishList')
+                                      .doc(widget.title)
+                                      .set({
+                                    'bookName': widget.title,
+                                    'category': widget.path,
+                                  });
+                                  return showDialog(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      title: Text("Successful", style: TextStyle(fontWeight: FontWeight.bold),),
+                                      content: Text("${widget.title} has been added to your WishList!"),
+                                      actions: <Widget>[
+                                        FlatButton(
+                                          onPressed: () {
+                                            Navigator.of(ctx).pop();
+                                          },
+                                          child: Text("OK"),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+
                                 color: Color(0xFF02340F),
                                 textColor: Colors.white,
-                                child: SvgPicture.asset('assets/wishlist.svg',
+                                child: SvgPicture.asset(
+                                  'assets/wishlist.svg',
                                   width: 16.0,
                                   height: 16.0,
                                   color: Colors.white,
@@ -201,7 +281,9 @@ class _SelectedBookState extends State<SelectedBook> {
             Container(
               padding: EdgeInsets.only(top: 16.0),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.only(topLeft: Radius.circular(15.0), topRight: Radius.circular(15.0)),
+                borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(15.0),
+                    topRight: Radius.circular(15.0)),
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
@@ -216,7 +298,8 @@ class _SelectedBookState extends State<SelectedBook> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(top: 7.0, left: 28.0),
-                    child: Text('About the Book',
+                    child: Text(
+                      'About the Book',
                       style: TextStyle(
                         fontSize: 16.0,
                         fontWeight: FontWeight.w900,
@@ -224,10 +307,12 @@ class _SelectedBookState extends State<SelectedBook> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.only(left: 28.0, top: 10.0, right: 28.0),
+                    padding: const EdgeInsets.only(
+                        left: 28.0, top: 10.0, right: 28.0),
                     child: SizedBox(
                       width: 200.0,
-                      child: Text(description,
+                      child: Text(
+                        description,
                         style: TextStyle(
                           fontSize: 14.0,
                         ),

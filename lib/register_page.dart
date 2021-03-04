@@ -1,3 +1,6 @@
+//cool_alert: ^1.0.3
+
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'constants.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -8,7 +11,8 @@ import 'package:bookshelf/home_page.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_facebook_login/flutter_facebook_login.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:modal_progress_hud/modal_progress_hud.dart';
+import 'package:cool_alert/cool_alert.dart';
+
 
 final _firestore = FirebaseFirestore.instance;
 
@@ -25,7 +29,38 @@ class _RegisterPageState extends State<RegisterPage> {
   TextEditingController passwordController = TextEditingController();
   TextEditingController nameController = TextEditingController();
   bool emailValidate = true, passwordValidate = true, nameValidate = true ;
-  bool showSpinner = false;
+  User current;
+  Timer timer;
+  Future<dynamic> coolAlert;
+
+  Future<void> checkEmail() async{
+    var user = _auth.currentUser;
+    await user.reload();
+    if (user.emailVerified) {
+      timer.cancel();
+      await _firestore.collection('users').doc(
+                _auth.currentUser.email).set({
+              'fullname': username,
+              'email': _auth.currentUser.email,
+              'profilePic': ""
+            });
+      setState(() {
+        coolAlert = CoolAlert.show(
+          context: context,
+          type: CoolAlertType.success,
+          title: 'Successful',
+          text: "Your email has been verified.",
+          confirmBtnText: 'Continue',
+          confirmBtnColor: Color(0xFF02340F),
+          backgroundColor: Color(0xFFCEF6A0),
+          onConfirmBtnTap: (){
+            Navigator.pushReplacement(context, MaterialPageRoute(
+                builder: (context) => HomePage()));
+          }
+        );
+      });
+    }
+  }
 
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
@@ -103,273 +138,331 @@ class _RegisterPageState extends State<RegisterPage> {
       });
   }
 
+
+  @override
+  void dispose() {
+    super.dispose();
+    timer.cancel();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color(0xFFCEF6A0),
-      body: ModalProgressHUD(
-        color: Color(0xFF02340F),
-        inAsyncCall: showSpinner,
-        child: SingleChildScrollView(
-          child: Center(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 19.0),
-                  child: Text(
-                    'BookShelf',
-                    style: TextStyle(
-                      fontSize: 70.0,
-                      fontFamily: 'Dandelion',
-                      color: Color(0xFF02340F),
+      body: SingleChildScrollView(
+        child: Center(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 19.0),
+                child: Text(
+                  'BookShelf',
+                  style: TextStyle(
+                    fontSize: 70.0,
+                    fontFamily: 'Dandelion',
+                    color: Color(0xFF02340F),
+                  ),
+                ),
+              ),
+              Container(
+                child: Image(
+                  image: AssetImage('images/RegisterImage.jpg'),
+                  fit: BoxFit.fill,
+                  height: 120.0,
+                ),
+                margin: EdgeInsets.only(left: 30.0, right: 30.0),
+              ),
+              SizedBox(
+                height: 15.0,
+              ),
+              Container(
+                margin: EdgeInsets.only(left: 10.0, right: 10.0, bottom: 10.0),
+                color: Colors.white,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(
+                        'Create Your BookShelf',
+                        style: TextStyle(
+                          fontSize: 16.0,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.7,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                Container(
-                  child: Image(
-                    image: AssetImage('images/RegisterImage.jpg'),
-                    fit: BoxFit.fill,
-                    height: 120.0,
-                  ),
-                  margin: EdgeInsets.only(left: 30.0, right: 30.0),
-                ),
-                SizedBox(
-                  height: 15.0,
-                ),
-                Container(
-                  margin: EdgeInsets.only(left: 10.0, right: 10.0, bottom: 10.0),
-                  color: Colors.white,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text(
-                          'Create Your BookShelf',
-                          style: TextStyle(
-                            fontSize: 16.0,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.7,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12.0, vertical: 7.0),
+                      child: Material(
+                        elevation: 5.0,
+                        borderRadius: BorderRadius.all(Radius.circular(32.0)),
+                        child: TextField(
+                          controller: nameController,
+                          decoration: textFieldDecoration.copyWith(
+                            hintText: 'Full Name',
+                            errorText:
+                              nameValidate ? null : 'Incorrect Full name',
+                            suffixIcon: Icon(
+                              Icons.person,
+                              color: Color(0xFF02340F),
+                            ),
                           ),
+                          onChanged: (value) {
+                            username = value;
+                          },
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12.0, vertical: 7.0),
-                        child: Material(
-                          elevation: 5.0,
-                          borderRadius: BorderRadius.all(Radius.circular(32.0)),
-                          child: TextField(
-                            controller: nameController,
-                            decoration: textFieldDecoration.copyWith(
-                              hintText: 'Full Name',
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12.0, vertical: 7.0),
+                      child: Material(
+                        elevation: 5.0,
+                        borderRadius: BorderRadius.all(Radius.circular(32.0)),
+                        child: TextField(
+                          controller: emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: textFieldDecoration.copyWith(
+                              hintText: 'Email ID',
                               errorText:
-                                nameValidate ? null : 'Incorrect Full name',
-                              suffixIcon: Icon(
-                                Icons.person,
-                                color: Color(0xFF02340F),
-                              ),
+                                  emailValidate ? null : 'Incorrect Email ID'),
+                          onChanged: (value) {
+                            email = value;
+                          },
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12.0, vertical: 7.0),
+                      child: Material(
+                        elevation: 5.0,
+                        borderRadius: BorderRadius.all(Radius.circular(32.0)),
+                        child: TextField(
+                          controller: passwordController,
+                          obscureText: true,
+                          decoration: textFieldDecoration.copyWith(
+                            hintText: 'Password',
+                            errorText: passwordValidate
+                                ? null
+                                : 'Password must have minimum 8 characters with at least one letter and one number',
+                            errorMaxLines: 2,
+                            suffixIcon: Icon(
+                              Icons.lock,
+                              color: Color(0xFF02340F),
                             ),
-                            onChanged: (value) {
-                              username = value;
-                            },
                           ),
+                          onChanged: (value) {
+                            password = value;
+                          },
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12.0, vertical: 7.0),
-                        child: Material(
-                          elevation: 5.0,
-                          borderRadius: BorderRadius.all(Radius.circular(32.0)),
-                          child: TextField(
-                            controller: emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            decoration: textFieldDecoration.copyWith(
-                                hintText: 'Email ID',
-                                errorText:
-                                    emailValidate ? null : 'Incorrect Email ID'),
-                            onChanged: (value) {
-                              email = value;
-                            },
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12.0, vertical: 7.0),
-                        child: Material(
-                          elevation: 5.0,
-                          borderRadius: BorderRadius.all(Radius.circular(32.0)),
-                          child: TextField(
-                            controller: passwordController,
-                            obscureText: true,
-                            decoration: textFieldDecoration.copyWith(
-                              hintText: 'Password',
-                              errorText: passwordValidate
-                                  ? null
-                                  : 'Password must have minimum 8 characters with at least one letter and one number',
-                              errorMaxLines: 2,
-                              suffixIcon: Icon(
-                                Icons.lock,
-                                color: Color(0xFF02340F),
-                              ),
-                            ),
-                            onChanged: (value) {
-                              password = value;
-                            },
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: EdgeInsets.symmetric(vertical: 7.0),
-                        child: Material(
-                          elevation: 5.0,
-                          color: Color(0xFF02340F),
-                          borderRadius: BorderRadius.circular(30.0),
-                          child: RawMaterialButton(
-                            onPressed: () async {
-                              validateEmail(emailController.text);
-                              validatePassword(passwordController.text);
-                              validateName(nameController.text);
-                              if (emailValidate == true &&
-                                  passwordValidate == true && nameValidate==true) {
+                    ),
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 7.0),
+                      child: Material(
+                        elevation: 5.0,
+                        color: Color(0xFF02340F),
+                        borderRadius: BorderRadius.circular(30.0),
+                        child: RawMaterialButton(
+                          onPressed: () async {
+                            validateEmail(emailController.text);
+                            validatePassword(passwordController.text);
+                            validateName(nameController.text);
+                            if (emailValidate == true &&
+                                passwordValidate == true && nameValidate==true) {
+                              try {
+                                final newUser =
+                                    await _auth.createUserWithEmailAndPassword(
+                                        email: email, password: password);
+                                var user = _auth.currentUser;
+                                user.sendEmailVerification();
                                 setState(() {
-                                  showSpinner = true;
+                                  coolAlert = CoolAlert.show(
+                                    context: context,
+                                    type: CoolAlertType.info,
+                                    confirmBtnColor: Color(0xFF02340F),
+                                    backgroundColor: Color(0xFFCEF6A0),
+                                    title: 'Verify',
+                                    text: "A verification link has been sent to you account. Click on it to verify your email.",
+                                  );
                                 });
-                                try {
-                                  final newUser =
-                                      await _auth.createUserWithEmailAndPassword(
-                                          email: email, password: password);
-                                  setState(() {
-                                    showSpinner = false;
-                                  });
-                                  if (newUser != null) {
-                                    await _firestore.collection('users').doc(_auth.currentUser.email).set({'fullname': username, 'email':_auth.currentUser.email});
-                                    Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                            builder: (context) => HomePage()));
-                                  }
-                                } catch (e) {
-                                  print(e);
-                                }
+                                timer = Timer.periodic(Duration(seconds: 3), (timer) {checkEmail(); });
+                                 } catch (e) {
+                                print(e);
                               }
-                            },
-                            padding: EdgeInsets.symmetric(horizontal: 70.0),
-                            child: Text(
-                              'REGISTER',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 17.0,
-                              ),
+                            }
+                          },
+                          padding: EdgeInsets.symmetric(horizontal: 70.0),
+                          child: Text(
+                            'REGISTER',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 17.0,
                             ),
                           ),
                         ),
                       ),
-                      Row(
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        DividerWidget(left: 35.0, right: 15.0),
+                        Text(
+                          'Or',
+                          style: TextStyle(
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        DividerWidget(
+                          left: 15.0,
+                          right: 35.0,
+                        ),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        GestureDetector(
+                          child: SvgPicture.asset(
+                            'assets/googleplus.svg',
+                            width: 35.0,
+                            height: 35.0,
+                          ),
+                          onTap: () async {
+                            UserCredential userCredential =
+                                await googleSignIn();
+                            User user = userCredential.user;
+                            await _firestore.collection('users').doc(user.email).set({'fullname': user.displayName, 'email':user.email, 'profilePic': ""});
+                            print(user.displayName);
+                            Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => HomePage()), (Route<dynamic> route) => false);
+                          },
+                        ),
+                        SizedBox(
+                          width: 40.0,
+                        ),
+                        GestureDetector(
+                          child: SvgPicture.asset(
+                            'assets/facebook.svg',
+                            width: 35.0,
+                            height: 35.0,
+                          ),
+                          onTap: () async {
+                            UserCredential userCredential =
+                            await facebookLogin();
+                            User user = userCredential.user;
+                            await _firestore.collection('users').doc(user.email).set({'fullname': user.displayName, 'email':user.email, 'profilePic': ""});
+                            print(user.displayName);
+                            Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => HomePage()), (Route<dynamic> route) => false);
+                          },
+                        ),
+                      ],
+                    ),
+                    SizedBox(
+                      height: 10.0,
+                    ),
+                    Padding(
+                      padding: EdgeInsets.only(bottom: 10.0),
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          DividerWidget(left: 35.0, right: 15.0),
                           Text(
-                            'Or',
+                            'Already have a BookShelf?',
                             style: TextStyle(
-                              fontSize: 14.0,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 16.0,
+                              color: Color(0xFF02340F),
                             ),
-                          ),
-                          DividerWidget(
-                            left: 15.0,
-                            right: 35.0,
-                          ),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          GestureDetector(
-                            child: SvgPicture.asset(
-                              'assets/googleplus.svg',
-                              width: 35.0,
-                              height: 35.0,
-                            ),
-                            onTap: () async {
-                              UserCredential userCredential =
-                                  await googleSignIn();
-                              User user = userCredential.user;
-                              await _firestore.collection('users').doc(user.email).set({'fullname': user.displayName, 'email':user.email});
-                              print(user.displayName);
-                              Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => HomePage()));
-                            },
-                          ),
-                          SizedBox(
-                            width: 40.0,
                           ),
                           GestureDetector(
-                            child: SvgPicture.asset(
-                              'assets/facebook.svg',
-                              width: 35.0,
-                              height: 35.0,
-                            ),
-                            onTap: () async {
-                              UserCredential userCredential =
-                              await facebookLogin();
-                              User user = userCredential.user;
-                              await _firestore.collection('users').doc(user.email).set({'fullname': user.displayName, 'email':user.email});
-                              print(user.displayName);
-                              Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => HomePage()));
-                            },
-                          ),
-                        ],
-                      ),
-                      SizedBox(
-                        height: 10.0,
-                      ),
-                      Padding(
-                        padding: EdgeInsets.only(bottom: 10.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Already have a BookShelf?',
+                            child: Text(
+                              ' Login',
                               style: TextStyle(
                                 fontSize: 16.0,
                                 color: Color(0xFF02340F),
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                            GestureDetector(
-                              child: Text(
-                                ' Login',
-                                style: TextStyle(
-                                  fontSize: 16.0,
-                                  color: Color(0xFF02340F),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              onTap: () {
-                                Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) => LoginPage()));
-                              },
-                            ),
-                          ],
-                        ),
+                            onTap: () {
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => LoginPage()));
+                            },
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+
+class VerifyEmail extends StatefulWidget {
+
+  final email, username;
+  final User user;
+  VerifyEmail({this.email, this.username, this.user});
+
+  @override
+  _VerifyEmailState createState() => _VerifyEmailState();
+}
+
+class _VerifyEmailState extends State<VerifyEmail> {
+
+  Timer timer;
+
+  @override
+  void initState() {
+    super.initState();
+    timer = Timer.periodic(Duration(seconds: 10), (timer) {checkEmailVerified();});
+  }
+
+
+  Future<void> checkEmailVerified() async {
+    await widget.user.reload();
+    if(widget.user.emailVerified){
+      timer.cancel();
+      print(widget.user.emailVerified);
+      await _firestore.collection('users').doc(widget.user.email).set({'fullname': widget.username, 'email': widget.user.email});
+      Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+              builder: (context) => HomePage()), (Route<dynamic> route) => false);
+    }
+    return false;
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    timer.cancel();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        children: [
+          Text(widget.username),
+          Text(widget.email),
+        ],
       ),
     );
   }

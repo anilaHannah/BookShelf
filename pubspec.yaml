@@ -26,6 +26,26 @@ dependencies:
   fluttertoast: ^7.1.6
   percent_indicator: ^2.1.7+2
   advance_pdf_viewer: ^1.2.1+2
+  pdf_text: ^0.4.0
+  path_provider: ^1.6.27
+  flutter_downloader: ^1.5.2
+  permission_handler: ^5.0.1+1
+  dio: ^3.0.10
+  flutter_full_pdf_viewer: ^1.0.4
+  pdf_flutter: ^1.1.4
+  http: ^0.12.2
+  syncfusion_flutter_pdf: ^18.4.41-beta
+  syncfusion_flutter_pdfviewer: ^18.4.41-beta
+  firebase_storage:
+  sliding_up_panel: ^1.0.2
+  cool_alert: ^1.0.3
+  word_selectable_text: ^0.1.0
+  textfield_search: ^0.7.0
+  translator: ^0.1.5
+  audioplayers: ^0.17.4
+  speech_recognition: ^0.3.0
+  speech_to_text: ^3.1.0
+
 
 dev_dependencies:
   flutter_test:
@@ -46,4 +66,12 @@ flutter:
     - family: SegoeUI
       fonts:
         - asset: fonts/SEGOEUI.ttf
+
+    - family: Ambili
+      fonts:
+        - asset: fonts/Ambili.ttf
+
+    - family: NotoSans
+      fonts:
+        - asset: fonts/NotoSans-Light.ttf
 

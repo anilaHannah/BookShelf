@@ -1,5 +1,5 @@
+//import 'package:bookshelf/book_page.dart';
 import 'package:flutter/material.dart';
-import 'package:bookshelf/constants.dart';
 import 'package:bookshelf/components.dart';
 import 'package:bookshelf/novel_genre.dart';
 import 'package:bookshelf/genre_books.dart';
@@ -7,6 +7,9 @@ import 'package:bookshelf/comic_genre.dart';
 import 'package:bookshelf/education_genre.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:textfield_search/textfield_search.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:speech_recognition/speech_recognition.dart';
 
 final _firestore = FirebaseFirestore.instance;
 
@@ -21,11 +24,17 @@ class _HomeFragmentState extends State<HomeFragment> {
   List<Widget> comics = [];
   List<Widget> educational = [];
   List<Widget> recommended = [];
+  var forSearch = [];
 
   String searchBook;
   TextEditingController searchController = TextEditingController();
   List<Widget> searchList = [];
   bool isVisible = true;
+
+  SpeechRecognition _speech;
+  bool _speechRecognitionAvailable = false;
+  bool _isListening = false;
+  String transcription = '';
 
   @override
   void initState() {
@@ -35,6 +44,87 @@ class _HomeFragmentState extends State<HomeFragment> {
     getRowBooks('Comics', comics);
     getRowBooks('Educational', educational);
     getRecommended(recommended);
+    searchController.addListener(_printLatestValue);
+    activateSpeechRecognizer();
+  }
+
+  void requestPermission() async {
+    // ignore: unrelated_type_equality_checks
+    if (Permission.microphone.isGranted != true) {
+      await Permission.microphone.request();
+    }
+  }
+
+  void activateSpeechRecognizer() {
+
+    _speech = new SpeechRecognition();
+    _speech.setAvailabilityHandler(onSpeechAvailability);
+    _speech.setCurrentLocaleHandler(onCurrentLocale);
+    _speech.setRecognitionStartedHandler(onRecognitionStarted);
+    _speech.setRecognitionResultHandler(onRecognitionResult);
+    _speech.setRecognitionCompleteHandler(onRecognitionComplete);
+    _speech
+        .activate()
+        .then((res) => setState(() => _speechRecognitionAvailable = res));
+  }
+
+  void start() => _speech
+      .listen(locale: 'en_US')
+      .then((result) => print('Started listening => result $result'));
+
+  void cancel() {
+      _speech.cancel().then((result) => setState(() => _isListening = result));
+      print('cancel');
+  }
+
+
+  void stop() => _speech.stop().then((result) {
+    setState(() => _isListening = result);
+    print('stop');
+  });
+
+  void onSpeechAvailability(bool result) {
+      setState(() => _speechRecognitionAvailable = result);
+      print('onSpeechAvailability');
+  }
+
+  void onCurrentLocale(String locale) {
+    setState(() => print("current locale: $locale"));
+    print('onCurrentLocale');
+  }
+
+  void onRecognitionStarted() {
+    setState(() => _isListening = true);
+    print('onRecognitionStarted');
+  }
+
+  void onRecognitionResult(String text) {
+    setState(() {
+      print("Text is "+text);
+      transcription = text;
+      searchController.text = text;
+      searchBook = text;
+      print("The result is : "+searchBook);
+      stop();
+    });
+    print('onRecognitionResult');
+  }
+
+  void onRecognitionComplete() {
+    setState(() => _isListening = false);
+    print('onRecognitionComplete');
+  }
+
+  _printLatestValue() {
+    if(searchController.text != "") {
+      searchBook = searchController.text;
+      getSearchBooks();
+      setState(() {
+        isVisible = false;
+      });
+    }
+    else
+      searchBook = null;
   }
 
   void getRecommended(List<Widget> list) {
@@ -56,6 +146,7 @@ class _HomeFragmentState extends State<HomeFragment> {
         );
         setState(() {
           list.add(book);
+          forSearch.add(bookName);
           list.shuffle();
         });
       }
@@ -96,14 +187,10 @@ class _HomeFragmentState extends State<HomeFragment> {
     doc.forEach((element) {
       var books = element.docs.asMap();
       for (var key in books.keys) {
-        final image = element.docs[key]['image'];
         final bookName = element.docs[key]['bookName'];
-        final author = element.docs[key]['author'];
         final category = element.docs[key]['category'];
         var book = BigBookCard(
-          author: author,
           bookName: bookName,
-          imageURL: image,
           path: category,
         );
         setState(() {
@@ -137,35 +224,18 @@ class _HomeFragmentState extends State<HomeFragment> {
                         child: Material(
                           elevation: 5.0,
                           borderRadius: BorderRadius.all(Radius.circular(10.0)),
-                          child: TextField(
-                            controller: searchController,
-                            decoration: textFieldDecoration.copyWith(
-                              hintText: 'Search Books',
-                              suffixIcon: GestureDetector(
-                                child: Icon(
-                                  Icons.search,
-                                  color: Color(0xFF02340F),
-                                ),
-                                onTap: () {
-                                  getSearchBooks();
-                                  setState(() {
-                                    isVisible = false;
-                                  });
-                                },
-                              ),
-                            ),
-                            onChanged: (value) {
-                              searchBook = value;
-                            },
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 10.0),
+                            child: TextFieldSearch(initialList: forSearch, label: "Book Name", controller: searchController),
                           ),
                         ),
                       ),
                     ),
-                    GestureDetector(
-                      child: Material(
-                        color: Color(0xFFCEF6A0),
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 20.0, right: 8.0),
+                    Material(
+                      color: Color(0xFFCEF6A0),
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 29.0, right: 10.0),
+                        child: GestureDetector(
                           child: CircleAvatar(
                             backgroundColor: Color(0xFF02340F),
                             child: SvgPicture.asset(
@@ -176,9 +246,11 @@ class _HomeFragmentState extends State<HomeFragment> {
                             ),
                             radius: 23.0,
                           ),
+                          onTap: _speechRecognitionAvailable && !_isListening
+                            ? () {requestPermission();start();}
+                            : () => stop(),
                         ),
                       ),
-                      onTap: null,
                     ),
                   ],
                 ),
@@ -405,14 +477,10 @@ class SearchStream extends StatelessWidget {
           List<BigBookCard> list = [];
           final books = snapshot.data.docs;
           for (var book in books) {
-            final imageURL = book.data()['image'];
             final bookName = book.data()['bookName'];
-            final author = book.data()['author'];
             final category = book.data()['category'];
             final bookCard = BigBookCard(
-              imageURL: imageURL,
               bookName: bookName,
-              author: author,
               path: category,
             );
             list.add(bookCard);
