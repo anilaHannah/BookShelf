@@ -1,6 +1,7 @@
 # bookshelf
 
-A new Flutter application.
+BookShelf is an EBook reader mobile application that provides a huge library at your fingertips. It is developed with the hope that the application will ease the process of finding and reading EBooks for the users. BookShelf is incorporated with many features like recommendation system, translation, dictionary etc. for various kinds of books. The application is built using Flutter and Firebase which makes it compatible with Android and iOS. It allows users to choose their preferred books from a large pool of books across various languages (international and regional languages), genres (Adventure, History, Drama, Romance, Thriller etc.) and types (Comics, Novels, Manga, Educational, Spiritual etc.). It also helps users to read books offline and find the meanings and translations of various words in a particular book. Users can switch between day/night mode, increase or decrease font size and rate the books. They can also recommend books to friends within the app and discuss it in the comment section.
+
 
 ![image](https://github.com/anilaHannah/BookShelf/assets/69452697/7dd54fa4-7f37-44d3-9961-62f97ec1df5d)
 
